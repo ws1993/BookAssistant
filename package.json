@@ -1,0 +1,40 @@
+{
+  "name": "book-assistant-mcp",
+  "version": "0.1.0",
+  "description": "A local MCP server for Cherry Studio that recommends, summarizes, and evaluates books using smart-search evidence.",
+  "type": "module",
+  "bin": {
+    "book-assistant-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "check": "tsc --noEmit",
+    "test": "node --test --import tsx src/test/**/*.test.ts"
+  },
+  "keywords": [
+    "mcp",
+    "books",
+    "cherry-studio",
+    "smart-search"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
