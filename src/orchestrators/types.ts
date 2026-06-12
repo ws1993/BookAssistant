@@ -1,4 +1,5 @@
 import type { BookStyleProfile } from "../schemas/bookAssistantSchemas.js";
+import type { BookPageKind } from "../schemas/bookPageSchema.js";
 
 export interface ClarificationQuestion {
   id: string;
@@ -14,67 +15,37 @@ export interface EvidenceSource {
   confidence?: "low" | "medium" | "high";
 }
 
-export interface ClarificationResult {
-  kind: "clarification";
+/**
+ * Returned when the request is too vague to search on. The host model should
+ * ask the user these questions before retrying the tool.
+ */
+export interface ClarificationPackage {
+  status: "needs_clarification";
+  kind: BookPageKind;
   title: string;
   intro: string;
   questions: ClarificationQuestion[];
-  styleProfile: BookStyleProfile;
+  styleProfile: Exclude<BookStyleProfile, "auto">;
 }
 
-export interface RecommendationItem {
-  rank: number;
-  title: string;
-  author?: string;
-  reason: string;
-  fit: string;
-  warning?: string;
-  tags: string[];
+/**
+ * The layer-1 output. Carries the original task, the raw synthesized evidence
+ * from smart-search, and instructions telling the host model how to turn that
+ * evidence into a `page` object for compose_book_page (layer 2).
+ */
+export interface EvidencePackage {
+  status: "evidence_collected";
+  kind: BookPageKind;
+  task: Record<string, unknown>;
+  styleProfile: Exclude<BookStyleProfile, "auto">;
+  searchOk: boolean;
+  searchError?: string;
+  /** Verbatim synthesized answer text from smart-search for the host model to read. */
+  evidenceDigest: string;
   sources: EvidenceSource[];
+  guidance: string[];
+  pageSkeleton: Record<string, unknown>;
+  nextAction: "draft_page_then_call_compose_book_page";
 }
 
-export interface RecommendationResult {
-  kind: "recommendation";
-  title: string;
-  query: string;
-  profile: BookStyleProfile;
-  summary: string;
-  items: RecommendationItem[];
-  evidence: EvidenceSource[];
-  notes: string[];
-}
-
-export interface SummaryResult {
-  kind: "summary";
-  title: string;
-  profile: BookStyleProfile;
-  bookTitle: string;
-  author?: string;
-  edition?: string;
-  spoilerPolicy: string;
-  overview: string;
-  keyPoints: string[];
-  structure: string[];
-  audience: string[];
-  sources: EvidenceSource[];
-  notes: string[];
-}
-
-export interface EvaluationResult {
-  kind: "evaluation";
-  title: string;
-  profile: BookStyleProfile;
-  bookTitle: string;
-  author?: string;
-  edition?: string;
-  score: number;
-  verdict: string;
-  pros: string[];
-  cons: string[];
-  bestFor: string[];
-  avoidIf: string[];
-  sources: EvidenceSource[];
-  notes: string[];
-}
-
-export type BookAssistantResult = ClarificationResult | RecommendationResult | SummaryResult | EvaluationResult;
+export type BookAssistantPackage = ClarificationPackage | EvidencePackage;

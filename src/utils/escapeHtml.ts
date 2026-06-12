@@ -1,37 +1,18 @@
-function normalizeText(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "";
-  }
+import { normalizeRenderedText } from "./normalizeRenderedText.js";
 
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
-    return String(value);
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  try {
-    return JSON.stringify(value) ?? "";
-  } catch {
-    return String(value);
-  }
-}
-
-export function escapeHtml(value: unknown): string {
-  return normalizeText(value)
+export function escapeHtmlText(value: string): string {
+  return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;")
-    .replaceAll("`", "&#096;");
+    .replaceAll("'", "&#039;");
+}
+
+export function escapeHtml(value: unknown): string {
+  return escapeHtmlText(normalizeRenderedText(value));
 }
 
 export function escapeAttribute(value: unknown): string {
-  return escapeHtml(value);
+  return escapeHtml(value).replaceAll("`", "&#096;");
 }

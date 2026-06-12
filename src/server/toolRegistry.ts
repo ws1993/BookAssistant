@@ -1,12 +1,20 @@
 import { evaluateBookTool } from "../tools/evaluateBookTool.js";
 import { recommendBooksTool } from "../tools/recommendBooksTool.js";
 import { summarizeBookTool } from "../tools/summarizeBookTool.js";
+import { composeBookPageTool } from "../tools/composeBookPageTool.js";
+import { renderBookHtmlTool } from "../tools/renderBookHtmlTool.js";
 import type { BookAssistantTool } from "../tools/types.js";
 
 const disabledToolsMessage =
-  "This MCP server exposes recommend_books, summarize_book, and evaluate_book for book discovery, summary, and evaluation workflows.";
+  "This MCP server exposes a 3-layer book workflow: recommend_books / summarize_book / evaluate_book (gather public evidence), compose_book_page (validate + dry-run a page object), and render_book_html (final inline HTML).";
 
-export const bookAssistantTools: BookAssistantTool[] = [recommendBooksTool, summarizeBookTool, evaluateBookTool];
+export const bookAssistantTools: BookAssistantTool[] = [
+  recommendBooksTool,
+  summarizeBookTool,
+  evaluateBookTool,
+  composeBookPageTool,
+  renderBookHtmlTool
+];
 
 export function listToolDefinitions(): Array<Pick<BookAssistantTool, "name" | "description" | "inputSchema">> {
   return bookAssistantTools.map(({ name, description, inputSchema }) => ({

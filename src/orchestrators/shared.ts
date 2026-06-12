@@ -1,18 +1,12 @@
 import {
   buildSearchArgs,
-  parseSmartSearchJson,
-  runSmartSearchFetch,
   runSmartSearchSearch,
   SmartSearchUnavailableError,
   type SmartSearchResult,
   type SmartSearchSearchOptions
 } from "../adapters/smartSearchClient.js";
-import { collectEvidenceSources, mergeEvidenceSources, summarizeLongText } from "../adapters/evidenceNormalizer.js";
+import { collectEvidenceSources, mergeEvidenceSources } from "../adapters/evidenceNormalizer.js";
 import type { EvidenceSource } from "./types.js";
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 
 export function toString(value: unknown, fallback = ""): string {
   if (typeof value === "string") {
@@ -45,60 +39,19 @@ export function toStringArray(value: unknown, fallback: string[] = []): string[]
   return unique.length > 0 ? unique : [...fallback];
 }
 
-export function toNumber(value: unknown, fallback = 0): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-
-  return fallback;
-}
-
-export function extractBulletLines(text: string, maxItems = 6): string[] {
-  const lines = text
-    .split(/\n+/)
-    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim())
-    .filter(Boolean);
-
-  const unique: string[] = [];
-
-  for (const line of lines) {
-    if (!unique.includes(line)) {
-      unique.push(line);
-    }
-
-    if (unique.length >= maxItems) {
-      break;
-    }
-  }
-
-  return unique;
-}
-
-export function extractQuotedTitles(text: string, maxItems = 8): string[] {
-  const titles = new Set<string>();
-  const bookRegex = /《([^》]{2,60})》/g;
-  const quoteRegex = /[“"]([^”"]{2,60})[”"]/g;
-
-  for (const match of text.matchAll(bookRegex)) {
-    titles.add(match[1].trim());
-  }
-
-  for (const match of text.matchAll(quoteRegex)) {
-    const value = match[1].trim();
-    if (value.length >= 2 && value.length <= 60) {
-      titles.add(value);
-    }
-  }
-
-  return [...titles].slice(0, maxItems);
-}
-
-export async function runBookSmartSearchSearch(query: string, options: SmartSearchSearchOptions = {}): Promise<SmartSearchResult> {
+/**
+ * Run one or more smart-search queries and merge their evidence.
+ *
+ * smart-search is an OpenAI-compatible web search: it returns a synthesized
+ * Markdown answer (`rawText`) plus a list of `sources`. We deliberately do NOT
+ * try to coerce it into emitting JSON — that was the root cause of the previous
+ * design failing. Instead we hand the raw synthesized text and sources back to
+ * the host model, which is responsible for turning them into a structured page.
+ */
+export async function runBookSmartSearch(
+  query: string,
+  options: SmartSearchSearchOptions = {}
+): Promise<SmartSearchResult> {
   try {
     return await runSmartSearchSearch(query, options);
   } catch (error) {
@@ -120,66 +73,37 @@ export async function runBookSmartSearchSearch(query: string, options: SmartSear
   }
 }
 
-export function parseStructuredResult(result: SmartSearchResult): Record<string, unknown> | undefined {
-  const candidates: unknown[] = [result.data, result.rawText];
-
-  for (const candidate of candidates) {
-    if (isPlainRecord(candidate)) {
-      return candidate;
-    }
-
-    if (typeof candidate === "string") {
-      const parsed = parseSmartSearchJson(candidate);
-      if (isPlainRecord(parsed)) {
-        return parsed;
-      }
-    }
-  }
-
-  return undefined;
+export interface CollectedEvidence {
+  ok: boolean;
+  error?: string;
+  /** The synthesized answer text from smart-search, verbatim, for the host model to read. */
+  digest: string;
+  sources: EvidenceSource[];
 }
 
-export async function enrichEvidenceFromSearch(result: SmartSearchResult, limit = 2): Promise<EvidenceSource[]> {
-  const urls = result.sources
-    .filter((source) => typeof source.url === "string" && source.url.length > 0)
-    .map((source) => source.url as string)
-    .slice(0, limit);
+export async function collectBookEvidence(
+  queries: string[],
+  options: SmartSearchSearchOptions = {}
+): Promise<CollectedEvidence> {
+  const results = await Promise.all(queries.map((query) => runBookSmartSearch(query, options)));
 
-  if (urls.length === 0) {
-    return result.sources;
-  }
+  const okResults = results.filter((result) => result.ok);
+  const failed = results.filter((result) => !result.ok);
 
-  const fetched = await Promise.all(
-    urls.map(async (url) => {
-      try {
-        return await runSmartSearchFetch(url, "json", 45);
-      } catch {
-        return undefined;
-      }
-    })
+  const digest = okResults
+    .map((result) => result.rawText)
+    .filter((text) => text.trim().length > 0)
+    .join("\n\n---\n\n");
+
+  const sources = mergeEvidenceSources(
+    ...results.map((result) => result.sources),
+    ...okResults.map((result) => collectEvidenceSources(result.rawText, "search"))
   );
 
-  const fetchedSources = fetched.flatMap((entry) => (entry ? entry.sources : []));
-  return mergeEvidenceSources(result.sources, fetchedSources);
-}
-
-export function summarizeEvidenceNotes(result: SmartSearchResult, limit = 4): string[] {
-  const notes: string[] = [];
-
-  if (!result.ok && result.error) {
-    notes.push(`智能搜索失败：${result.error}`);
-  }
-
-  if (result.rawText) {
-    const summary = summarizeLongText(result.rawText, 4, 260);
-    if (summary) {
-      notes.push(`搜索摘要：${summary}`);
-    }
-  }
-
-  return notes.slice(0, limit);
-}
-
-export function collectStructuredEvidence(value: unknown, kind: EvidenceSource["kind"] = "search", sourceLabel = "smart-search"): EvidenceSource[] {
-  return collectEvidenceSources(value, kind, sourceLabel);
+  return {
+    ok: okResults.length > 0,
+    error: okResults.length === 0 ? failed.map((result) => result.error).filter(Boolean).join("; ") || undefined : undefined,
+    digest,
+    sources
+  };
 }

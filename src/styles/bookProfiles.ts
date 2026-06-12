@@ -1,4 +1,7 @@
-import type { BookStyleProfile } from "../schemas/bookAssistantSchemas.js";
+import type { BookExpressionStrategy, BookPageKind, BookStyleProfile } from "../schemas/bookPageSchema.js";
+
+export type ResolvedBookStyleProfile = Exclude<BookStyleProfile, "auto">;
+export type ResolvedBookExpressionStrategy = Exclude<BookExpressionStrategy, "auto">;
 
 export interface BookThemeTokens {
   bg: string;
@@ -29,7 +32,16 @@ export interface BookThemeTokens {
   outerBackground: string;
 }
 
-const bookThemes: Record<Exclude<BookStyleProfile, "auto">, BookThemeTokens> = {
+export interface BookProfileDefinition {
+  theme: BookThemeTokens;
+  treatment: {
+    leadTreatment: string;
+    sectionTreatment: string;
+    sourceTreatment: string;
+  };
+}
+
+const bookThemes: Record<ResolvedBookStyleProfile, BookThemeTokens> = {
   "literary-classic": {
     bg: "#f3eadb",
     surface: "#fff9f0",
@@ -84,7 +96,8 @@ const bookThemes: Record<Exclude<BookStyleProfile, "auto">, BookThemeTokens> = {
     h2FontSize: "20px",
     h3FontSize: "16px",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    outerBackground: "radial-gradient(circle at 10% 0%, rgba(96, 165, 250, 0.18), transparent 28%), linear-gradient(180deg, #0f172a, #101828)"
+    outerBackground:
+      "radial-gradient(circle at 10% 0%, rgba(96, 165, 250, 0.18), transparent 28%), linear-gradient(180deg, #0f172a, #101828)"
   },
   "knowledge-nonfiction": {
     bg: "#f8fafc",
@@ -172,7 +185,36 @@ const bookThemes: Record<Exclude<BookStyleProfile, "auto">, BookThemeTokens> = {
   }
 };
 
-export function resolveBookStyleProfile(profile: BookStyleProfile, text = ""): Exclude<BookStyleProfile, "auto"> {
+const bookProfileDefinitions: Record<ResolvedBookStyleProfile, BookProfileDefinition> = {
+  "literary-classic": {
+    theme: bookThemes["literary-classic"],
+    treatment: { leadTreatment: "导读", sectionTreatment: "章节脉络", sourceTreatment: "参考与延伸" }
+  },
+  "web-fiction": {
+    theme: bookThemes["web-fiction"],
+    treatment: { leadTreatment: "速览", sectionTreatment: "看点", sourceTreatment: "来源" }
+  },
+  "knowledge-nonfiction": {
+    theme: bookThemes["knowledge-nonfiction"],
+    treatment: { leadTreatment: "核心观点", sectionTreatment: "知识结构", sourceTreatment: "证据来源" }
+  },
+  "academic-professional": {
+    theme: bookThemes["academic-professional"],
+    treatment: { leadTreatment: "摘要", sectionTreatment: "结构", sourceTreatment: "文献来源" }
+  },
+  "youth-light": {
+    theme: bookThemes["youth-light"],
+    treatment: { leadTreatment: "一句话推荐", sectionTreatment: "亮点", sourceTreatment: "来源" }
+  }
+};
+
+const strategyByKind: Record<BookPageKind, ResolvedBookExpressionStrategy> = {
+  recommendation: "catalog",
+  summary: "top-down",
+  evaluation: "decision"
+};
+
+export function resolveBookStyleProfile(profile: BookStyleProfile, text = ""): ResolvedBookStyleProfile {
   if (profile !== "auto") {
     return profile;
   }
@@ -202,7 +244,18 @@ export function resolveBookStyleProfile(profile: BookStyleProfile, text = ""): E
   return "knowledge-nonfiction";
 }
 
+export function resolveBookProfileDefinition(profile: ResolvedBookStyleProfile): BookProfileDefinition {
+  return bookProfileDefinitions[profile];
+}
+
 export function resolveBookTheme(profile: BookStyleProfile, text = ""): BookThemeTokens {
   return bookThemes[resolveBookStyleProfile(profile, text)];
 }
 
+export function resolveBookStrategy(kind: BookPageKind, requested: BookExpressionStrategy | undefined): ResolvedBookExpressionStrategy {
+  if (requested && requested !== "auto") {
+    return requested;
+  }
+
+  return strategyByKind[kind];
+}

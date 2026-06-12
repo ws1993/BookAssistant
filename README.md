@@ -4,11 +4,27 @@ BookAssistant 是一个面向 Cherry Studio 的本地 MCP Server，用于图书�
 
 它使用 `smart-search` CLI 作为公开网页证据检索层，优先参考豆瓣读书，同时可结合 Goodreads、微信读书、出版社、百科和书评媒体等公开来源。
 
-## 功能
+## 三层管线
 
-- `recommend_books`：根据用户需求推荐图书；如果需求过于模糊，会先返回澄清问题。
-- `summarize_book`：总结指定图书，支持作者 / ISBN / 版本 / 剧透策略。
-- `evaluate_book`：基于公开评分、评论和书评证据做图书评价。
+工具分三层协作，由宿主模型（Cherry Studio 里的模型）串联：
+
+**第一层 · 收集证据**（调用 `smart-search` 检索公开网页，返回证据包，不渲染）
+
+- `recommend_books`：根据用户需求收集图书推荐证据；如果需求过于模糊，会先返回澄清问题。
+- `summarize_book`：收集指定图书的总结证据，支持作者 / ISBN / 版本 / 剧透策略。
+- `evaluate_book`：收集公开评分、评论和书评证据。
+
+每个工具返回 `evidenceDigest`（smart-search 合成的综述）、`sources`（引用来源）、`pageSkeleton` 和 `guidance`。宿主模型据此撰写一个 `page` 对象。
+
+**第二层 · 校验组织**
+
+- `compose_book_page`：对宿主模型撰写的 `page` 做 schema 校验、Markdown 残留检查和 dry-run 试渲染，返回 `readyToRender` 与结构化的 errors / warnings 及规范化后的 page。
+
+**第三层 · 渲染**
+
+- `render_book_html`：把校验通过的 `page` 渲染成一段连续的内联样式 HTML 片段（图书专属皮肤）。仅在 `readyToRender: true` 后调用一次。
+
+> 一次出图需 3 次工具调用：收集 → 组织 → 渲染。
 
 ## 输出风格
 
