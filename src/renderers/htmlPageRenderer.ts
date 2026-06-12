@@ -1,10 +1,36 @@
 import type { HtmlPageInput, HtmlPageSectionInput } from "../schemas/htmlPageSchema.js";
-import { resolveBookTheme } from "../styles/bookThemes.js";
 import { escapeAttribute, escapeHtml } from "../utils/escapeHtml.js";
 import { formatHtml } from "../utils/formatHtml.js";
 import { style } from "./shared/style.js";
 
-type PageTheme = ReturnType<typeof resolveBookTheme>;
+export interface HtmlPageThemeTokens {
+  bg: string;
+  surface: string;
+  panel: string;
+  text: string;
+  muted: string;
+  primary: string;
+  primarySoft: string;
+  accent: string;
+  accentSoft: string;
+  border: string;
+  borderSubtle: string;
+  borderCss: string;
+  radius: string;
+  radiusSmall: string;
+  shadow: string;
+  softShadow: string;
+  sectionPadding: string;
+  cardPadding: string;
+  gap: string;
+  bodyFontSize: string;
+  smallFontSize: string;
+  h1FontSize: string;
+  h2FontSize: string;
+  h3FontSize: string;
+  fontFamily: string;
+  outerBackground: string;
+}
 
 export interface HtmlPageRenderOptions {
   attributes: Record<string, string>;
@@ -13,7 +39,7 @@ export interface HtmlPageRenderOptions {
     background: string;
     color: string;
   };
-  theme: PageTheme;
+  theme: HtmlPageThemeTokens;
 }
 
 function renderBadge(text: string, background: string, color: string): string {
@@ -39,7 +65,7 @@ function renderHeroSection(section: Extract<HtmlPageSectionInput, { type: "hero"
   </section>`;
 }
 
-function renderFeatureSection(section: Extract<HtmlPageSectionInput, { type: "features" }>, theme: PageTheme): string {
+function renderFeatureSection(section: Extract<HtmlPageSectionInput, { type: "features" }>, theme: HtmlPageThemeTokens): string {
   return `<section style="${escapeAttribute(style({ padding: theme.sectionPadding, background: theme.bg, display: "grid", gap: theme.gap }))}">
     <h2 style="${escapeAttribute(style({ margin: 0, "font-size": theme.h2FontSize, color: theme.text }))}">${escapeHtml(section.heading)}</h2>
     ${section.intro ? `<div style="${escapeAttribute(style({ color: theme.muted, "font-size": theme.bodyFontSize }))}">${joinSectionBody(section.intro)}</div>` : ""}
@@ -57,7 +83,7 @@ function renderFeatureSection(section: Extract<HtmlPageSectionInput, { type: "fe
   </section>`;
 }
 
-function renderStepsSection(section: Extract<HtmlPageSectionInput, { type: "steps" }>, theme: PageTheme): string {
+function renderStepsSection(section: Extract<HtmlPageSectionInput, { type: "steps" }>, theme: HtmlPageThemeTokens): string {
   return `<section style="${escapeAttribute(style({ padding: theme.sectionPadding, background: theme.bg, display: "grid", gap: theme.gap }))}">
     <h2 style="${escapeAttribute(style({ margin: 0, "font-size": theme.h2FontSize, color: theme.text }))}">${escapeHtml(section.heading)}</h2>
     <div style="${escapeAttribute(style({ display: "grid", gap: "12px" }))}">
@@ -74,14 +100,14 @@ function renderStepsSection(section: Extract<HtmlPageSectionInput, { type: "step
   </section>`;
 }
 
-function renderContentSection(section: Extract<HtmlPageSectionInput, { type: "content" }>, theme: PageTheme): string {
+function renderContentSection(section: Extract<HtmlPageSectionInput, { type: "content" }>, theme: HtmlPageThemeTokens): string {
   return `<section style="${escapeAttribute(style({ padding: theme.sectionPadding, background: theme.surface }))}">
     <h2 style="${escapeAttribute(style({ margin: "0 0 12px", "font-size": theme.h2FontSize }))}">${escapeHtml(section.heading)}</h2>
     <div style="${escapeAttribute(style({ padding: theme.cardPadding, background: theme.panel, border: `1px solid ${theme.borderSubtle}`, "border-radius": theme.radiusSmall, color: theme.text }))}">${joinSectionBody(section.body)}</div>
   </section>`;
 }
 
-function renderFaqSection(section: Extract<HtmlPageSectionInput, { type: "faq" }>, theme: PageTheme): string {
+function renderFaqSection(section: Extract<HtmlPageSectionInput, { type: "faq" }>, theme: HtmlPageThemeTokens): string {
   return `<section style="${escapeAttribute(style({ padding: theme.sectionPadding, background: theme.bg, display: "grid", gap: theme.gap }))}">
     <h2 style="${escapeAttribute(style({ margin: 0, "font-size": theme.h2FontSize, color: theme.text }))}">${escapeHtml(section.heading)}</h2>
     ${section.items.map((item) => `<article style="${escapeAttribute(style({ padding: theme.cardPadding, background: theme.surface, border: theme.borderCss, "border-radius": theme.radiusSmall }))}">

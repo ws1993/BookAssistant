@@ -16,6 +16,7 @@ import { createRecommendationResult } from "../orchestrators/bookRecommendation.
 import { createSummaryResult } from "../orchestrators/bookSummary.js";
 import { adaptBookRenderDocumentToHtmlPage, validateHtmlPageInput } from "../renderers/bookRenderHtmlPageAdapter.js";
 import { buildBookRenderDocument, validateBookRenderDocument } from "../renderers/bookRenderDocument.js";
+import type { HtmlPageThemeTokens } from "../renderers/htmlPageRenderer.js";
 import { renderBookAssistantHtml } from "../renderers/bookHtmlRenderer.js";
 import { listToolDefinitions } from "../server/toolRegistry.js";
 import type { HtmlPageInput } from "../schemas/htmlPageSchema.js";
@@ -215,18 +216,53 @@ test("presentBookAssistantResult validates and renders HTML", () => {
   assert.match(String(response.content[0]?.text ?? ""), /data-book-assistant="recommendation"/);
 });
 
+test("presentBookAssistantResult does not duplicate render document assembly", () => {
+  const source = readFileSync(path.join(process.cwd(), "src/tools/presentBookAssistantResult.ts"), "utf8");
+
+  assert.doesNotMatch(source, /buildBookRenderDocument/);
+  assert.doesNotMatch(source, /validateBookRenderDocument/);
+});
+
 test("renderHtmlPage renders a generic HtmlPageInput without a book result", async () => {
   const rendererModule = await import("../renderers/htmlPageRenderer.js").catch(() => undefined) as ({
     renderHtmlPage?: (page: HtmlPageInput, options: {
       attributes: Record<string, string>;
       heroBadge: { text: string; background: string; color: string };
-      theme: ReturnType<typeof resolveBookTheme>;
+      theme: HtmlPageThemeTokens;
     }) => string;
   } | undefined);
 
   assert.equal(typeof rendererModule?.renderHtmlPage, "function");
 
-  const theme = resolveBookTheme("knowledge-nonfiction", "通用页面");
+  const theme: HtmlPageThemeTokens = {
+    bg: "#f8fafc",
+    surface: "#ffffff",
+    panel: "#eef6ff",
+    text: "#172033",
+    muted: "#64748b",
+    primary: "#2563eb",
+    primarySoft: "#dbeafe",
+    accent: "#0f766e",
+    accentSoft: "#ccfbf1",
+    border: "#cbd5e1",
+    borderSubtle: "#e2e8f0",
+    borderCss: "1px solid #dbe5f0",
+    radius: "22px",
+    radiusSmall: "16px",
+    shadow: "0 18px 44px rgba(15, 23, 42, 0.10)",
+    softShadow: "0 8px 22px rgba(15, 23, 42, 0.06)",
+    sectionPadding: "28px",
+    cardPadding: "18px",
+    gap: "14px",
+    bodyFontSize: "15px",
+    smallFontSize: "12.5px",
+    h1FontSize: "30px",
+    h2FontSize: "20px",
+    h3FontSize: "16px",
+    fontFamily: "Arial, sans-serif",
+    outerBackground: "#f8fafc"
+  };
+
   const html = rendererModule?.renderHtmlPage?.({
     template: "article",
     title: "通用页面",
@@ -252,6 +288,64 @@ test("htmlPageRenderer does not depend on book theme module", () => {
   const source = readFileSync(path.join(process.cwd(), "src/renderers/htmlPageRenderer.ts"), "utf8");
 
   assert.doesNotMatch(source, /bookThemes/);
+});
+
+test("assembleBookHtmlPage exposes second-layer page assembly", async () => {
+  const assemblerModule = await import("../renderers/bookHtmlPageAssembler.js").catch(() => undefined) as ({
+    assembleBookHtmlPage?: (result: {
+      kind: "recommendation";
+      title: string;
+      query: string;
+      profile: "knowledge-nonfiction";
+      summary: string;
+      items: Array<{
+        rank: number;
+        title: string;
+        author?: string;
+        reason: string;
+        fit: string;
+        tags: string[];
+        sources: [];
+      }>;
+      evidence: [];
+      notes: string[];
+    }) => {
+      page: HtmlPageInput;
+      renderOptions: {
+        attributes: Record<string, string>;
+        heroBadge: { text: string; background: string; color: string };
+        theme: HtmlPageThemeTokens;
+      };
+    };
+  } | undefined);
+
+  assert.equal(typeof assemblerModule?.assembleBookHtmlPage, "function");
+
+  const assembled = assemblerModule?.assembleBookHtmlPage?.({
+    kind: "recommendation",
+    title: "图书推荐：悬疑",
+    query: "我想看悬疑推理",
+    profile: "knowledge-nonfiction",
+    summary: "适合喜欢悬疑推理的读者。",
+    items: [
+      {
+        rank: 1,
+        title: "无人生还",
+        author: "阿加莎·克里斯蒂",
+        reason: "经典密室/孤岛悬疑，节奏紧凑。",
+        fit: "适合喜欢烧脑推理的读者",
+        tags: ["悬疑", "经典"],
+        sources: []
+      }
+    ],
+    evidence: [],
+    notes: ["示例输出"]
+  });
+
+  assert.equal(assembled?.page.template, "report");
+  assert.equal(assembled?.page.sections[0]?.type, "hero");
+  assert.equal(assembled?.renderOptions.attributes["data-book-assistant"], "recommendation");
+  assert.equal(assembled?.renderOptions.heroBadge.text, "图书推荐");
 });
 
 test("renderBookAssistantHtml renders faq sections from HtmlPageInput path", () => {
