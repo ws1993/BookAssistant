@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { normalizeToolArguments } from "../adapters/normalizeToolArguments.js";
-import { renderBookAssistantHtml } from "../renderers/bookHtmlRenderer.js";
 import { recommendationInputSchema } from "../schemas/bookAssistantSchemas.js";
-import { textContent } from "../server/toolResponse.js";
 import { recommendBooksInputSchema } from "../toolSchemas/recommendBooksInputSchema.js";
 import type { BookAssistantTool } from "./types.js";
 import { createRecommendationResult } from "../orchestrators/bookRecommendation.js";
+import { presentBookAssistantResult } from "./presentBookAssistantResult.js";
 
 const parsedRecommendationInputSchema = z.preprocess(normalizeToolArguments, recommendationInputSchema);
 
@@ -17,7 +16,7 @@ export const recommendBooksTool: BookAssistantTool = {
   async handle(args: unknown) {
     const input = parsedRecommendationInputSchema.parse(args);
     const result = await createRecommendationResult(input);
-    return textContent(renderBookAssistantHtml(result));
+    return presentBookAssistantResult(result);
   }
 };
 

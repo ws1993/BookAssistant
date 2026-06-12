@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { normalizeToolArguments } from "../adapters/normalizeToolArguments.js";
-import { renderBookAssistantHtml } from "../renderers/bookHtmlRenderer.js";
 import { summaryInputSchema } from "../schemas/bookAssistantSchemas.js";
-import { textContent } from "../server/toolResponse.js";
 import { summarizeBookInputSchema } from "../toolSchemas/summarizeBookInputSchema.js";
 import type { BookAssistantTool } from "./types.js";
 import { createSummaryResult } from "../orchestrators/bookSummary.js";
+import { presentBookAssistantResult } from "./presentBookAssistantResult.js";
 
 const parsedSummaryInputSchema = z.preprocess(normalizeToolArguments, summaryInputSchema);
 
@@ -17,7 +16,7 @@ export const summarizeBookTool: BookAssistantTool = {
   async handle(args: unknown) {
     const input = parsedSummaryInputSchema.parse(args);
     const result = await createSummaryResult(input);
-    return textContent(renderBookAssistantHtml(result));
+    return presentBookAssistantResult(result);
   }
 };
 

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { collectEvidenceSources, mergeEvidenceSources } from "./evidenceNormalizer.js";
 import type { EvidenceSource } from "../orchestrators/types.js";
@@ -32,6 +33,27 @@ export interface SmartSearchResult {
 interface SmartSearchExecutable {
   file: string;
   shell: boolean;
+}
+
+export function resolveSmartSearchExecutable(command: string): SmartSearchExecutable | undefined {
+  if (!command.trim()) {
+    return undefined;
+  }
+
+  const candidates = process.platform === "win32"
+    ? [command, `${command}.cmd`, `${command}.exe`, `${command}.bat`]
+    : [command];
+
+  const matched = candidates.find((candidate) => existsSync(candidate));
+
+  if (!matched) {
+    return undefined;
+  }
+
+  return {
+    file: matched,
+    shell: process.platform === "win32"
+  };
 }
 
 export class SmartSearchUnavailableError extends Error {
@@ -95,8 +117,12 @@ function quoteWindowsArg(arg: string): string {
 }
 
 export function buildSmartSearchInvocation(command: string, args: string[]): SmartSearchExecutable {
-  if (process.platform === "win32") {
-    const quoted = [command, ...args].map(quoteWindowsArg).join(" ");
+  const resolved = resolveSmartSearchExecutable(command);
+  const executable = resolved?.file ?? command;
+  const useShell = resolved?.shell ?? process.platform === "win32";
+
+  if (useShell) {
+    const quoted = [executable, ...args].map(quoteWindowsArg).join(" ");
 
     return {
       file: quoted,
@@ -105,7 +131,7 @@ export function buildSmartSearchInvocation(command: string, args: string[]): Sma
   }
 
   return {
-    file: command,
+    file: executable,
     shell: false
   };
 }
@@ -186,7 +212,13 @@ async function runSmartSearchCommand(
   timeoutSeconds: number
 ): Promise<SmartSearchResult> {
   const smartSearchCommand = getSmartSearchCommand();
-  const invocation = buildSmartSearchInvocation(smartSearchCommand, [command, ...args]);
+  const resolvedExecutable = resolveSmartSearchExecutable(smartSearchCommand);
+
+  if (!resolvedExecutable) {
+    return buildFailedSmartSearchResult(command, args, new SmartSearchUnavailableError(smartSearchCommand));
+  }
+
+  const invocation = buildSmartSearchInvocation(resolvedExecutable.file, [command, ...args]);
 
   return await new Promise<SmartSearchResult>((resolve) => {
     const startedAt = Date.now();
