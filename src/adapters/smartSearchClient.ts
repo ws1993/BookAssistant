@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { collectEvidenceSources, mergeEvidenceSources } from "./evidenceNormalizer.js";
 import type { EvidenceSource } from "../orchestrators/types.js";
@@ -36,13 +37,24 @@ interface SmartSearchExecutable {
 }
 
 export function resolveSmartSearchExecutable(command: string): SmartSearchExecutable | undefined {
-  if (!command.trim()) {
+  const trimmed = command.trim();
+
+  if (!trimmed) {
     return undefined;
   }
 
+  const isPathLike = path.isAbsolute(trimmed) || trimmed.includes("/") || trimmed.includes("\\");
+
+  if (!isPathLike) {
+    return {
+      file: trimmed,
+      shell: process.platform === "win32"
+    };
+  }
+
   const candidates = process.platform === "win32"
-    ? [command, `${command}.cmd`, `${command}.exe`, `${command}.bat`]
-    : [command];
+    ? [trimmed, `${trimmed}.cmd`, `${trimmed}.exe`, `${trimmed}.bat`]
+    : [trimmed];
 
   const matched = candidates.find((candidate) => existsSync(candidate));
 
@@ -212,13 +224,11 @@ async function runSmartSearchCommand(
   timeoutSeconds: number
 ): Promise<SmartSearchResult> {
   const smartSearchCommand = getSmartSearchCommand();
-  const resolvedExecutable = resolveSmartSearchExecutable(smartSearchCommand);
+  const invocation = buildSmartSearchInvocation(smartSearchCommand, [command, ...args]);
 
-  if (!resolvedExecutable) {
+  if (!invocation.file.trim()) {
     return buildFailedSmartSearchResult(command, args, new SmartSearchUnavailableError(smartSearchCommand));
   }
-
-  const invocation = buildSmartSearchInvocation(resolvedExecutable.file, [command, ...args]);
 
   return await new Promise<SmartSearchResult>((resolve) => {
     const startedAt = Date.now();
