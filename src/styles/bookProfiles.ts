@@ -34,6 +34,8 @@ export interface BookThemeTokens {
 
 export interface BookProfileDefinition {
   theme: BookThemeTokens;
+  visualSignature: string;
+  visualLabel: string;
   treatment: {
     leadTreatment: string;
     sectionTreatment: string;
@@ -188,22 +190,32 @@ const bookThemes: Record<ResolvedBookStyleProfile, BookThemeTokens> = {
 const bookProfileDefinitions: Record<ResolvedBookStyleProfile, BookProfileDefinition> = {
   "literary-classic": {
     theme: bookThemes["literary-classic"],
+    visualSignature: "annotated-classic",
+    visualLabel: "CLASSIC NOTES",
     treatment: { leadTreatment: "导读", sectionTreatment: "章节脉络", sourceTreatment: "参考与延伸" }
   },
   "web-fiction": {
     theme: bookThemes["web-fiction"],
+    visualSignature: "genre-pulse",
+    visualLabel: "GENRE FIELD",
     treatment: { leadTreatment: "速览", sectionTreatment: "看点", sourceTreatment: "来源" }
   },
   "knowledge-nonfiction": {
     theme: bookThemes["knowledge-nonfiction"],
+    visualSignature: "knowledge-map",
+    visualLabel: "KNOWLEDGE MAP",
     treatment: { leadTreatment: "核心观点", sectionTreatment: "知识结构", sourceTreatment: "证据来源" }
   },
   "academic-professional": {
     theme: bookThemes["academic-professional"],
+    visualSignature: "research-dossier",
+    visualLabel: "RESEARCH DOSSIER",
     treatment: { leadTreatment: "摘要", sectionTreatment: "结构", sourceTreatment: "文献来源" }
   },
   "youth-light": {
     theme: bookThemes["youth-light"],
+    visualSignature: "warm-reading",
+    visualLabel: "LIGHT READING",
     treatment: { leadTreatment: "一句话推荐", sectionTreatment: "亮点", sourceTreatment: "来源" }
   }
 };
@@ -221,23 +233,23 @@ export function resolveBookStyleProfile(profile: BookStyleProfile, text = ""): R
 
   const normalized = text.toLowerCase();
 
-  if (/网文|修仙|玄幻|仙侠|快穿|爽文|连载|男频|女频/.test(normalized)) {
+  if (/网文|修仙|玄幻|仙侠|快穿|爽文|连载|男频|女频|科幻|奇幻|武侠|悬疑|推理|末世|赛博|宇宙|异能/.test(normalized)) {
     return "web-fiction";
   }
 
-  if (/专业|教材|学术|研究|论文|统计|编程|工程|医学|法律|金融|管理|方法/.test(normalized)) {
+  if (/专业|教材|学术|研究|论文|统计|编程|工程|医学|法律|金融|管理|方法|算法|计算机|课程|技术|数学|物理|心理学/.test(normalized)) {
     return "academic-professional";
   }
 
-  if (/历史|社会|经济|科普|商业|传记|非虚构|知识|认知/.test(normalized)) {
+  if (/历史|社会|经济|科普|商业|传记|非虚构|知识|认知|政治|政府|产业|政策|哲学|人类学|科学|投资/.test(normalized)) {
     return "knowledge-nonfiction";
   }
 
-  if (/治愈|轻松|青春|轻小说|亲子|成长|温暖/.test(normalized)) {
+  if (/治愈|轻松|青春|轻小说|亲子|成长|温暖|童话|少年|儿童|校园|友情|陪伴|温柔/.test(normalized)) {
     return "youth-light";
   }
 
-  if (/经典|文学|小说|文艺|散文|诗歌/.test(normalized)) {
+  if (/经典|文学|文艺|散文|诗歌|名著|拉美|现实主义|现代主义|女性主义/.test(normalized)) {
     return "literary-classic";
   }
 

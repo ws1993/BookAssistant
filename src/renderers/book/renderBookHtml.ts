@@ -81,6 +81,54 @@ function renderFooter(footer: BookPageInput["footer"], context: BookRenderContex
   )}">${footer.text ? renderBodyText(footer.text, theme) : ""}${links}</div>`;
 }
 
+function renderThemeSignature(context: BookRenderContext): string {
+  const { theme, definition, profile } = context;
+  const signatureStyles: Record<BookRenderContext["profile"], Record<string, string | number>> = {
+    "literary-classic": {
+      background: `linear-gradient(90deg, ${theme.primary}, ${theme.border}, ${theme.primary})`,
+      height: "7px"
+    },
+    "web-fiction": {
+      background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent}, ${theme.primary})`,
+      height: "8px"
+    },
+    "knowledge-nonfiction": {
+      background: `repeating-linear-gradient(90deg, ${theme.primary} 0 18px, ${theme.accent} 18px 22px, ${theme.primarySoft} 22px 42px)`,
+      height: "7px"
+    },
+    "academic-professional": {
+      background: `linear-gradient(90deg, ${theme.border} 0 1px, transparent 1px 12px), ${theme.panel}`,
+      height: "10px"
+    },
+    "youth-light": {
+      background: `linear-gradient(90deg, ${theme.primarySoft}, ${theme.accentSoft}, ${theme.primarySoft})`,
+      height: "9px"
+    }
+  };
+
+  return `<div data-theme-signature="${escapeAttribute(definition.visualSignature)}" style="${escapeAttribute(
+    style({
+      ...signatureStyles[profile],
+      position: "relative",
+      overflow: "hidden"
+    })
+  )}">
+    <span style="${escapeAttribute(
+      style({
+        position: "absolute",
+        right: "14px",
+        top: "50%",
+        transform: "translateY(-50%)",
+        color: profile === "web-fiction" ? "rgba(255,255,255,0.76)" : theme.muted,
+        "font-size": "9px",
+        "font-weight": 850,
+        "letter-spacing": "0",
+        "line-height": 1
+      })
+    )}">${escapeHtml(definition.visualLabel)}</span>
+  </div>`;
+}
+
 export function renderBookHtml(input: BookPageInput): string {
   const page = bookPageSchema.parse(input);
   const context = resolveBookRenderContext(page);
@@ -91,7 +139,7 @@ export function renderBookHtml(input: BookPageInput): string {
 
   const html = `<div data-book-assistant="${escapeAttribute(page.kind)}" data-style-profile="${escapeAttribute(
     profile
-  )}" data-expression-strategy="${escapeAttribute(strategy)}" data-expression-types="${escapeAttribute(
+  )}" data-visual-signature="${escapeAttribute(context.definition.visualSignature)}" data-expression-strategy="${escapeAttribute(strategy)}" data-expression-types="${escapeAttribute(
     getBookExpressionTypes(expressions)
   )}" style="${escapeAttribute(
     style({
@@ -107,6 +155,7 @@ export function renderBookHtml(input: BookPageInput): string {
       overflow: "hidden"
     })
   )}">
+    ${renderThemeSignature(context)}
     ${expressionHtml.join("")}
     ${sourcesHtml}
     ${renderFooter(page.footer, context)}

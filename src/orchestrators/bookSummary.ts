@@ -41,11 +41,11 @@ export async function createSummaryPackage(input: SummaryInput): Promise<BookAss
   }
 
   const evidence = await collectBookEvidence(buildSearchQueries(input), {
-    validation: "balanced",
-    extraSources: 2,
+    validation: "fast",
+    extraSources: 0,
     fallback: "off",
     format: "json",
-    timeoutSeconds: 60
+    timeoutSeconds: 25
   });
 
   const { guidance, pageSkeleton } = buildGuidancePackage("summary", `图书总结：${input.title}`, styleProfile);
