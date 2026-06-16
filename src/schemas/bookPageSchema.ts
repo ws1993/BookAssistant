@@ -57,6 +57,34 @@ export const bookExpressionSchema = z.discriminatedUnion("type", [
     facts: z.array(factExpressionItemSchema).optional()
   }),
   z.object({
+    type: z.literal("pros-cons"),
+    title: z.string().optional(),
+    intro: z.string().optional(),
+    overallVerdict: z.string().optional(),
+    pros: z
+      .array(
+        z.object({
+          title: z.string().min(1, "Pro title is required"),
+          body: z.string().optional()
+        })
+      )
+      .min(1, "At least one pro is required"),
+    cons: z
+      .array(
+        z.object({
+          title: z.string().min(1, "Con title is required"),
+          body: z.string().optional()
+        })
+      )
+      .optional(),
+    readerFit: z
+      .object({
+        bestFor: z.array(z.string().min(1)).optional(),
+        notFor: z.array(z.string().min(1)).optional()
+      })
+      .optional()
+  }),
+  z.object({
     type: z.literal("key-takeaways"),
     title: z.string().optional(),
     intro: z.string().optional(),

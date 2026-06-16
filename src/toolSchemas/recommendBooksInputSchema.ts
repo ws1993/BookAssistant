@@ -19,6 +19,31 @@ export const recommendBooksInputSchema = {
       type: "string",
       description: "想要的阅读风格，例如爽感、烧脑、治愈、严肃、轻松"
     },
+    mood: {
+      type: "array",
+      items: { type: "string" },
+      description: "期望的情感氛围或阅读心情，例如轻松、治愈、悬疑、烧脑、励志、压抑、欢快"
+    },
+    pace: {
+      type: "string",
+      enum: ["slow", "medium", "fast"],
+      description: "阅读节奏偏好：slow慢节奏深度阅读、medium中等节奏、fast快节奏爽感"
+    },
+    readingLevel: {
+      type: "string",
+      enum: ["easy", "moderate", "challenging"],
+      description: "阅读难度偏好：easy轻松入门、moderate中等难度、challenging深度烧脑"
+    },
+    lengthPreference: {
+      type: "string",
+      enum: ["short", "medium", "long", "any"],
+      description: "长度偏好：short短篇快读、medium中篇、long长篇史诗、any不限"
+    },
+    contentWarningsToAvoid: {
+      type: "array",
+      items: { type: "string" },
+      description: "要避开的敏感内容，例如暴力、性描写、心理创伤、自杀、虐待、歧视"
+    },
     constraints: {
       type: "array",
       items: { type: "string" },

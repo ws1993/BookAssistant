@@ -11,7 +11,16 @@ function buildSearchQueries(input: EvaluationInput): string[] {
   const focus = input.focus ? `，重点评估${input.focus}` : "";
 
   return [
-    `《${identity}》这本书的评价怎么样？请汇总公开评分、优点、不足与适合/不适合的读者${focus}。参考豆瓣读书、Goodreads 等公开评分与书评。`
+    `《${identity}》这本书的评价怎么样？请结构化汇总以下信息：
+1. 整体评分（豆瓣、Goodreads等公开平台）和评分分布趋势
+2. 主要优点（3-5条，每条用简短标题+详细说明）
+3. 主要不足或缺点（2-4条，同样用标题+说明）
+4. 适合的读者类型（bestFor：哪些人会喜欢这本书）
+5. 不适合的读者类型（notFor：哪些人可能不喜欢）
+6. 阅读节奏和难度（slow/medium/fast，easy/moderate/challenging）
+7. 情感基调（轻松、沉重、治愈、压抑等）${focus}
+
+请参考豆瓣读书、Goodreads、微信读书等公开评分与高质量书评，提取实际读者的真实反馈。`
   ];
 }
 

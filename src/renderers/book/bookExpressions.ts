@@ -43,6 +43,129 @@ function renderLeadExpression(
   return renderBookSection(expression.type, inner, context, isFirst, { background });
 }
 
+function renderProsConsExpression(
+  expression: Extract<BookExpressionInput, { type: "pros-cons" }>,
+  context: BookRenderContext,
+  isFirst: boolean
+): string {
+  const { theme } = context;
+  
+  const renderProConList = (items: Array<{ title: string; body?: string }>, isPositive: boolean) => {
+    const color = isPositive ? theme.primary : "#b91c1c";
+    const bgColor = isPositive ? theme.primarySoft : "rgba(185, 28, 28, 0.08)";
+    
+    return items
+      .map(
+        (item) => `<div style="${escapeAttribute(
+          style({
+            display: "flex",
+            gap: "10px",
+            padding: theme.cardPadding,
+            background: bgColor,
+            border: `1px solid ${color}30`,
+            "border-radius": theme.radiusSmall
+          })
+        )}">
+          <div style="${escapeAttribute(
+            style({
+              "font-size": "18px",
+              "font-weight": 900,
+              color: color,
+              "flex-shrink": 0,
+              "margin-top": "2px"
+            })
+          )}">${isPositive ? "✓" : "✗"}</div>
+          <div style="${escapeAttribute(style({ flex: 1 }))}">
+            <div style="${escapeAttribute(
+              style({
+                "font-size": theme.h3FontSize,
+                "font-weight": 800,
+                color: theme.text,
+                "margin-bottom": item.body ? "6px" : "0"
+              })
+            )}">${escapeHtml(item.title)}</div>
+            ${item.body ? renderBodyText(item.body, theme, theme.muted) : ""}
+          </div>
+        </div>`
+      )
+      .join("");
+  };
+
+  const inner = `${renderSectionHeading(expression.title ?? "优缺点分析", expression.intro, context)}
+    ${expression.overallVerdict
+      ? `<div style="${escapeAttribute(
+          style({
+            padding: theme.cardPadding,
+            background: theme.panel,
+            border: `1px solid ${theme.borderSubtle}`,
+            "border-radius": theme.radiusSmall,
+            "margin-bottom": theme.gap
+          })
+        )}">
+          <div style="${escapeAttribute(
+            style({ "font-size": theme.smallFontSize, "font-weight": 850, color: theme.primary, "margin-bottom": "6px" })
+          )}">总体评价</div>
+          ${renderBodyText(expression.overallVerdict, theme, theme.text)}
+        </div>`
+      : ""}
+    <div style="${escapeAttribute(style({ "margin-bottom": theme.gap }))}">
+      <div style="${escapeAttribute(
+        style({
+          "font-size": theme.h3FontSize,
+          "font-weight": 800,
+          color: theme.primary,
+          "margin-bottom": "10px"
+        })
+      )}">优点</div>
+      <div style="${escapeAttribute(style({ display: "flex", "flex-direction": "column", gap: "8px" }))}">${renderProConList(expression.pros, true)}</div>
+    </div>
+    ${expression.cons && expression.cons.length > 0
+      ? `<div style="${escapeAttribute(style({ "margin-bottom": theme.gap }))}">
+          <div style="${escapeAttribute(
+            style({
+              "font-size": theme.h3FontSize,
+              "font-weight": 800,
+              color: "#b91c1c",
+              "margin-bottom": "10px"
+            })
+          )}">不足</div>
+          <div style="${escapeAttribute(style({ display: "flex", "flex-direction": "column", gap: "8px" }))}">${renderProConList(expression.cons, false)}</div>
+        </div>`
+      : ""}
+    ${expression.readerFit
+      ? `<div style="${escapeAttribute(
+          style({
+            padding: theme.cardPadding,
+            background: theme.surface,
+            border: `1px solid ${theme.borderSubtle}`,
+            "border-radius": theme.radiusSmall
+          })
+        )}">
+          <div style="${escapeAttribute(
+            style({ "font-size": theme.h3FontSize, "font-weight": 800, color: theme.text, "margin-bottom": "12px" })
+          )}">读者适配度</div>
+          ${expression.readerFit.bestFor && expression.readerFit.bestFor.length > 0
+            ? `<div style="${escapeAttribute(style({ "margin-bottom": "12px" }))}">
+                <div style="${escapeAttribute(
+                  style({ "font-size": theme.smallFontSize, "font-weight": 800, color: theme.primary, "margin-bottom": "6px" })
+                )}">✓ 适合</div>
+                ${renderSimpleList(expression.readerFit.bestFor, context, false)}
+              </div>`
+            : ""}
+          ${expression.readerFit.notFor && expression.readerFit.notFor.length > 0
+            ? `<div>
+                <div style="${escapeAttribute(
+                  style({ "font-size": theme.smallFontSize, "font-weight": 800, color: "#b91c1c", "margin-bottom": "6px" })
+                )}">✗ 不适合</div>
+                ${renderSimpleList(expression.readerFit.notFor, context, false)}
+              </div>`
+            : ""}
+        </div>`
+      : ""}`;
+
+  return renderBookSection(expression.type, inner, context, isFirst);
+}
+
 function renderKeyTakeawaysExpression(
   expression: Extract<BookExpressionInput, { type: "key-takeaways" }>,
   context: BookRenderContext,
@@ -237,6 +360,8 @@ export function renderBookExpression(
   switch (expression.type) {
     case "lead":
       return renderLeadExpression(expression, context, isFirst);
+    case "pros-cons":
+      return renderProsConsExpression(expression, context, isFirst);
     case "key-takeaways":
       return renderKeyTakeawaysExpression(expression, context, isFirst);
     case "executive-summary":

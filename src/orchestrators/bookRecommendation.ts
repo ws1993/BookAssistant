@@ -13,6 +13,11 @@ function buildSearchQueries(input: RecommendationInput): string[] {
     input.genre ? `题材：${input.genre}` : "",
     input.audience ? `读者：${input.audience}` : "",
     input.tone ? `风格：${input.tone}` : "",
+    input.mood.length ? `心情：${input.mood.join("、")}` : "",
+    input.pace ? `节奏：${input.pace === "slow" ? "慢节奏深度" : input.pace === "fast" ? "快节奏爽感" : "中等节奏"}` : "",
+    input.readingLevel ? `难度：${input.readingLevel === "easy" ? "轻松入门" : input.readingLevel === "challenging" ? "深度烧脑" : "中等难度"}` : "",
+    input.lengthPreference && input.lengthPreference !== "any" ? `长度：${input.lengthPreference === "short" ? "短篇" : input.lengthPreference === "long" ? "长篇" : "中篇"}` : "",
+    input.contentWarningsToAvoid.length ? `避开敏感内容：${input.contentWarningsToAvoid.join("、")}` : "",
     input.constraints.length ? `要求：${input.constraints.join("、")}` : "",
     input.avoid.length ? `避开：${input.avoid.join("、")}` : ""
   ]

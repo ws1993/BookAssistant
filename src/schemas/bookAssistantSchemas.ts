@@ -19,6 +19,11 @@ export const recommendationInputSchema = z.object({
   audience: z.string().trim().optional(),
   genre: z.string().trim().optional(),
   tone: z.string().trim().optional(),
+  mood: optionalTextList.describe("期望的情感氛围或阅读心情，例如轻松、治愈、悬疑、烧脑、励志"),
+  pace: z.enum(["slow", "medium", "fast"]).optional().describe("阅读节奏偏好：slow慢节奏深度、medium中等、fast快节奏爽感"),
+  readingLevel: z.enum(["easy", "moderate", "challenging"]).optional().describe("阅读难度偏好：easy轻松入门、moderate中等、challenging深度烧脑"),
+  lengthPreference: z.enum(["short", "medium", "long", "any"]).optional().describe("长度偏好：short短篇、medium中篇、long长篇、any不限"),
+  contentWarningsToAvoid: optionalTextList.describe("要避开的敏感内容，例如暴力、性描写、心理创伤、虐待"),
   constraints: optionalTextList.describe("必须满足的条件，例如篇幅、完结状态、语言、年龄段"),
   avoid: optionalTextList.describe("不想要的元素、题材或雷点"),
   count: z.number().int().min(1).max(10).default(3),
@@ -47,10 +52,26 @@ export const evaluationInputSchema = z.object({
   styleProfile: bookStyleProfileSchema.default("auto")
 });
 
+export const similarBooksInputSchema = z.object({
+  title: nonEmptyText.describe("参考书的书名"),
+  author: z.string().trim().optional(),
+  isbn: z.string().trim().optional(),
+  similarityFocus: z
+    .enum(["auto", "theme", "style", "mood", "genre"])
+    .default("auto")
+    .describe("相似度关注点：auto自动、theme主题、style写作风格、mood情感基调、genre题材类型"),
+  count: z.number().int().min(1).max(10).default(5),
+  avoidAuthor: z.boolean().default(false).describe("是否避开同一作者的其他作品"),
+  constraints: optionalTextList.describe("额外约束条件"),
+  language: z.string().trim().default("zh-CN"),
+  styleProfile: bookStyleProfileSchema.default("auto")
+});
+
 export type BookStyleProfile = z.infer<typeof bookStyleProfileSchema>;
 export type RecommendationInput = z.infer<typeof recommendationInputSchema>;
 export type SummaryInput = z.infer<typeof summaryInputSchema>;
 export type EvaluationInput = z.infer<typeof evaluationInputSchema>;
+export type SimilarBooksInput = z.infer<typeof similarBooksInputSchema>;
 
 export interface ClarificationQuestion {
   id: string;
@@ -58,7 +79,18 @@ export interface ClarificationQuestion {
 }
 
 export function needsRecommendationClarification(input: RecommendationInput): boolean {
-  const signalCount = [input.audience, input.genre, input.tone, input.constraints.length, input.avoid.length]
+  const signalCount = [
+    input.audience,
+    input.genre,
+    input.tone,
+    input.mood.length,
+    input.pace,
+    input.readingLevel,
+    input.lengthPreference,
+    input.contentWarningsToAvoid.length,
+    input.constraints.length,
+    input.avoid.length
+  ]
     .map((value) => (typeof value === "number" ? value : value ? 1 : 0))
     .reduce((sum, value) => sum + value, 0);
 
@@ -68,9 +100,12 @@ export function needsRecommendationClarification(input: RecommendationInput): bo
 export function buildRecommendationClarificationQuestions(): ClarificationQuestion[] {
   return [
     { id: "genre", label: "你更想要哪类书：悬疑、网文、小说、非虚构、历史、商业、科普、专业书？" },
+    { id: "mood", label: "你现在的阅读心情：轻松治愈、悬疑烧脑、励志向上、压抑沉重、还是欢快爽感？" },
+    { id: "pace", label: "节奏偏好：慢节奏深度阅读、中等节奏、还是快节奏爽文？" },
+    { id: "readingLevel", label: "难度偏好：轻松入门、中等难度、还是深度烧脑？" },
     { id: "audience", label: "这本书主要给谁读：学生、上班族、资深读者、轻阅读用户、特定年龄段？" },
-    { id: "tone", label: "你希望偏什么风格：爽感、治愈、黑暗、严肃、轻松、烧脑、节奏快？" },
-    { id: "constraints", label: "有没有必须满足的条件：完结、短篇、女性向、中文、最近出版、不要太虐？" }
+    { id: "contentWarningsToAvoid", label: "有没有要避开的敏感内容：暴力、性描写、心理创伤、自杀、虐待等？" },
+    { id: "constraints", label: "有没有必须满足的条件：完结、短篇、女性向、中文、最近出版？" }
   ];
 }
 
