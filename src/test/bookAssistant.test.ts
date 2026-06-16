@@ -12,11 +12,14 @@ import { runSmartSearchSearch } from "../adapters/smartSearchClient.js";
 import { buildGuidancePackage } from "../orchestrators/guidance.js";
 import { createSummaryPackage } from "../orchestrators/bookSummary.js";
 
-test("tool registry exposes 5 tools", () => {
+test("tool registry exposes 8 tools", () => {
   const tools = listToolDefinitions();
-  assert.equal(tools.length, 5);
+  assert.equal(tools.length, 8);
   const names = tools.map((t) => t.name);
   assert.ok(names.includes("recommend_books"));
+  assert.ok(names.includes("recommend_similar_books"));
+  assert.ok(names.includes("compare_books"));
+  assert.ok(names.includes("generate_booklist"));
   assert.ok(names.includes("summarize_book"));
   assert.ok(names.includes("evaluate_book"));
   assert.ok(names.includes("compose_book_page"));
@@ -182,7 +185,7 @@ test("createSummaryPackage uses a fast smart-search budget", async () => {
     const result = await createSummaryPackage({
       title: "三体",
       author: "刘慈欣",
-      spoilerPolicy: "safe",
+      spoilerLevel: "light",
       language: "zh-CN",
       styleProfile: "auto"
     });

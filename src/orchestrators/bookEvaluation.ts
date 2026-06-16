@@ -18,7 +18,8 @@ function buildSearchQueries(input: EvaluationInput): string[] {
 4. 适合的读者类型（bestFor：哪些人会喜欢这本书）
 5. 不适合的读者类型（notFor：哪些人可能不喜欢）
 6. 阅读节奏和难度（slow/medium/fast，easy/moderate/challenging）
-7. 情感基调（轻松、沉重、治愈、压抑等）${focus}
+7. 情感基调（轻松、沉重、治愈、压抑等）
+8. 内容警告（如有）：暴力、性、心理健康、歧视、虐待、药物滥用等敏感内容及程度（无/轻微/中等/严重）${focus}
 
 请参考豆瓣读书、Goodreads、微信读书等公开评分与高质量书评，提取实际读者的真实反馈。`
   ];

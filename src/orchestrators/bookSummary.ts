@@ -9,15 +9,20 @@ function buildSearchQueries(input: SummaryInput): string[] {
     .filter(Boolean)
     .join(" ");
   const focus = input.focus ? `，重点说明${input.focus}` : "";
-  const spoiler =
-    input.spoilerPolicy === "full"
-      ? "可以包含剧透。"
-      : input.spoilerPolicy === "balanced"
-        ? "可包含适度剧透，但避免揭晓关键结局。"
-        : "尽量无剧透。";
+  
+  const spoilerGuidance = {
+    none: "严格无剧透：只介绍背景设定、世界观、主要角色身份和故事开端，不涉及任何具体情节发展。",
+    light: "适度剧透：可以讲到故事中段的主要情节线，但必须避免揭晓关键转折点、高潮部分和结局。",
+    full: "完整剧透：可以包含所有剧情，包括关键转折、高潮和结局，适合已读过或不介意剧透的读者。"
+  };
+  
+  const spoiler = spoilerGuidance[input.spoilerLevel];
 
   return [
-    `《${identity}》这本书讲了什么？请概述核心内容、结构脉络与适读人群${focus}。${spoiler}参考豆瓣读书等公开来源。`
+    `《${identity}》这本书讲了什么？请概述核心内容、结构脉络与适读人群${focus}。
+剧透控制：${spoiler}
+如果这本书包含敏感内容（暴力、性、心理创伤等），请简要标注内容警告及程度。
+参考豆瓣读书、Goodreads等公开来源。`
   ];
 }
 

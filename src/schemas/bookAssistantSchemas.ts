@@ -36,7 +36,10 @@ export const summaryInputSchema = z.object({
   author: z.string().trim().optional(),
   isbn: z.string().trim().optional(),
   edition: z.string().trim().optional(),
-  spoilerPolicy: z.enum(["safe", "balanced", "full"]).default("safe"),
+  spoilerLevel: z
+    .enum(["none", "light", "full"])
+    .default("light")
+    .describe("剧透程度：none无剧透仅背景、light适度剧透到中段、full完整剧透含结局"),
   focus: z.string().trim().optional(),
   language: z.string().trim().default("zh-CN"),
   styleProfile: bookStyleProfileSchema.default("auto")
@@ -67,11 +70,42 @@ export const similarBooksInputSchema = z.object({
   styleProfile: bookStyleProfileSchema.default("auto")
 });
 
+export const compareBooksInputSchema = z.object({
+  books: z
+    .array(
+      z.object({
+        title: nonEmptyText.describe("书名"),
+        author: z.string().trim().optional()
+      })
+    )
+    .min(2, "至少需要2本书进行对比")
+    .max(5, "最多对比5本书"),
+  compareAspects: optionalTextList.describe("对比维度，例如：主题、写作风格、难度、节奏、长度、适合人群"),
+  focus: z.string().trim().optional().describe("对比重点，例如：哪本更适合入门、哪本更烧脑"),
+  language: z.string().trim().default("zh-CN"),
+  styleProfile: bookStyleProfileSchema.default("auto")
+});
+
+export const generateBooklistInputSchema = z.object({
+  theme: nonEmptyText.describe("书单主题，例如：科幻入门、女性成长、商业思维"),
+  count: z.number().int().min(3).max(15).default(5).describe("书单中的图书数量"),
+  progression: z
+    .enum(["beginner-to-advanced", "thematic", "chronological", "auto"])
+    .default("auto")
+    .describe("组织方式：beginner-to-advanced从易到难、thematic按主题、chronological按时间"),
+  targetAudience: z.string().trim().optional().describe("目标读者"),
+  focus: z.string().trim().optional().describe("重点关注"),
+  language: z.string().trim().default("zh-CN"),
+  styleProfile: bookStyleProfileSchema.default("auto")
+});
+
 export type BookStyleProfile = z.infer<typeof bookStyleProfileSchema>;
 export type RecommendationInput = z.infer<typeof recommendationInputSchema>;
 export type SummaryInput = z.infer<typeof summaryInputSchema>;
 export type EvaluationInput = z.infer<typeof evaluationInputSchema>;
 export type SimilarBooksInput = z.infer<typeof similarBooksInputSchema>;
+export type CompareBooksInput = z.infer<typeof compareBooksInputSchema>;
+export type GenerateBooklistInput = z.infer<typeof generateBooklistInputSchema>;
 
 export interface ClarificationQuestion {
   id: string;

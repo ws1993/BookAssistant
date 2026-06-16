@@ -1,17 +1,21 @@
 import { evaluateBookTool } from "../tools/evaluateBookTool.js";
 import { recommendBooksTool } from "../tools/recommendBooksTool.js";
 import { recommendSimilarBooksTool } from "../tools/recommendSimilarBooksTool.js";
+import { compareBooksTool } from "../tools/compareBooksTool.js";
+import { generateBooklistTool } from "../tools/generateBooklistTool.js";
 import { summarizeBookTool } from "../tools/summarizeBookTool.js";
 import { composeBookPageTool } from "../tools/composeBookPageTool.js";
 import { renderBookHtmlTool } from "../tools/renderBookHtmlTool.js";
 import type { BookAssistantTool } from "../tools/types.js";
 
 const disabledToolsMessage =
-  "This MCP server exposes a 3-layer book workflow: recommend_books / recommend_similar_books / summarize_book / evaluate_book (gather public evidence), compose_book_page (validate + dry-run a page object), and render_book_html (final inline HTML).";
+  "This MCP server exposes a 3-layer book workflow: recommend_books / recommend_similar_books / compare_books / generate_booklist / summarize_book / evaluate_book (gather public evidence), compose_book_page (validate + dry-run a page object), and render_book_html (final inline HTML).";
 
 export const bookAssistantTools: BookAssistantTool[] = [
   recommendBooksTool,
   recommendSimilarBooksTool,
+  compareBooksTool,
+  generateBooklistTool,
   summarizeBookTool,
   evaluateBookTool,
   composeBookPageTool,

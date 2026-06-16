@@ -57,6 +57,24 @@ export const bookExpressionSchema = z.discriminatedUnion("type", [
     facts: z.array(factExpressionItemSchema).optional()
   }),
   z.object({
+    type: z.literal("content-warnings"),
+    title: z.string().optional(),
+    intro: z.string().optional(),
+    overall: z.string().optional(),
+    warnings: z
+      .array(
+        z.object({
+          category: z.string().min(1, "Warning category is required"),
+          level: z.enum(["none", "mild", "moderate", "graphic"]).optional(),
+          details: z.string().optional(),
+          pageReferences: z.array(z.string()).optional()
+        })
+      )
+      .min(1, "At least one warning is required"),
+    safeFor: z.array(z.string().min(1)).optional(),
+    cautionFor: z.array(z.string().min(1)).optional()
+  }),
+  z.object({
     type: z.literal("pros-cons"),
     title: z.string().optional(),
     intro: z.string().optional(),

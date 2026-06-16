@@ -166,6 +166,116 @@ function renderProsConsExpression(
   return renderBookSection(expression.type, inner, context, isFirst);
 }
 
+function renderContentWarningsExpression(
+  expression: Extract<BookExpressionInput, { type: "content-warnings" }>,
+  context: BookRenderContext,
+  isFirst: boolean
+): string {
+  const { theme } = context;
+
+  const levelColors = {
+    none: theme.muted,
+    mild: "#f59e0b",
+    moderate: "#ea580c",
+    graphic: "#dc2626"
+  };
+
+  const levelLabels = {
+    none: "无",
+    mild: "轻微",
+    moderate: "中等",
+    graphic: "严重"
+  };
+
+  const inner = `${renderSectionHeading(expression.title ?? "内容警告", expression.intro, context)}
+    ${expression.overall
+      ? `<div style="${escapeAttribute(
+          style({
+            padding: theme.cardPadding,
+            background: "#fef3c7",
+            border: "2px solid #f59e0b",
+            "border-radius": theme.radiusSmall,
+            "margin-bottom": theme.gap
+          })
+        )}">
+          <div style="${escapeAttribute(
+            style({ "font-size": theme.smallFontSize, "font-weight": 850, color: "#b45309", "margin-bottom": "6px" })
+          )}">⚠️ 总体提示</div>
+          ${renderBodyText(expression.overall, theme, "#78350f")}
+        </div>`
+      : ""}
+    <div style="${escapeAttribute(style({ display: "flex", "flex-direction": "column", gap: "10px", "margin-bottom": theme.gap }))}">
+      ${expression.warnings
+        .map(
+          (warning) => `<div style="${escapeAttribute(
+            style({
+              padding: theme.cardPadding,
+              background: theme.panel,
+              border: `2px solid ${warning.level ? levelColors[warning.level] : theme.borderSubtle}`,
+              "border-radius": theme.radiusSmall
+            })
+          )}">
+            <div style="${escapeAttribute(style({ display: "flex", "justify-content": "space-between", "align-items": "center", "margin-bottom": "6px" }))}">
+              <div style="${escapeAttribute(
+                style({ "font-size": theme.h3FontSize, "font-weight": 800, color: theme.text })
+              )}">${escapeHtml(warning.category)}</div>
+              ${warning.level
+                ? `<div style="${escapeAttribute(
+                    style({
+                      padding: "3px 10px",
+                      background: levelColors[warning.level],
+                      color: "#fff",
+                      "border-radius": "12px",
+                      "font-size": theme.smallFontSize,
+                      "font-weight": 800
+                    })
+                  )}">${levelLabels[warning.level]}</div>`
+                : ""}
+            </div>
+            ${warning.details ? renderBodyText(warning.details, theme, theme.muted) : ""}
+            ${warning.pageReferences && warning.pageReferences.length > 0
+              ? `<div style="${escapeAttribute(
+                  style({ "margin-top": "8px", "font-size": theme.smallFontSize, color: theme.muted })
+                )}">涉及位置：${escapeHtml(warning.pageReferences.join("、"))}</div>`
+              : ""}
+          </div>`
+        )
+        .join("")}
+    </div>
+    ${expression.safeFor || expression.cautionFor
+      ? `<div style="${escapeAttribute(
+          style({
+            padding: theme.cardPadding,
+            background: theme.surface,
+            border: `1px solid ${theme.borderSubtle}`,
+            "border-radius": theme.radiusSmall
+          })
+        )}">
+          <div style="${escapeAttribute(
+            style({ "font-size": theme.h3FontSize, "font-weight": 800, color: theme.text, "margin-bottom": "12px" })
+          )}">适读提示</div>
+          ${expression.safeFor && expression.safeFor.length > 0
+            ? `<div style="${escapeAttribute(style({ "margin-bottom": "12px" }))}">
+                <div style="${escapeAttribute(
+                  style({ "font-size": theme.smallFontSize, "font-weight": 800, color: theme.primary, "margin-bottom": "6px" })
+                )}">✓ 可安全阅读</div>
+                ${renderSimpleList(expression.safeFor, context, false)}
+              </div>`
+            : ""}
+          ${expression.cautionFor && expression.cautionFor.length > 0
+            ? `<div>
+                <div style="${escapeAttribute(
+                  style({ "font-size": theme.smallFontSize, "font-weight": 800, color: "#ea580c", "margin-bottom": "6px" })
+                )}">⚠️ 需要谨慎</div>
+                ${renderSimpleList(expression.cautionFor, context, false)}
+              </div>`
+            : ""}
+        </div>`
+      : ""}`;
+
+  return renderBookSection(expression.type, inner, context, isFirst);
+}
+
 function renderKeyTakeawaysExpression(
   expression: Extract<BookExpressionInput, { type: "key-takeaways" }>,
   context: BookRenderContext,
@@ -360,6 +470,8 @@ export function renderBookExpression(
   switch (expression.type) {
     case "lead":
       return renderLeadExpression(expression, context, isFirst);
+    case "content-warnings":
+      return renderContentWarningsExpression(expression, context, isFirst);
     case "pros-cons":
       return renderProsConsExpression(expression, context, isFirst);
     case "key-takeaways":

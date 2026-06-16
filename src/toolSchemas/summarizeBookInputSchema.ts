@@ -19,10 +19,11 @@ export const summarizeBookInputSchema = {
       type: "string",
       description: "版本或出版社信息"
     },
-    spoilerPolicy: {
+    spoilerLevel: {
       type: "string",
-      enum: ["safe", "balanced", "full"],
-      default: "safe"
+      enum: ["none", "light", "full"],
+      default: "light",
+      description: "剧透程度：none无剧透仅背景设定、light适度剧透到故事中段、full完整剧透包含结局"
     },
     focus: {
       type: "string",
