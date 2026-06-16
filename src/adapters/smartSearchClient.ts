@@ -245,14 +245,16 @@ async function runSmartSearchCommand(
     let settled = false;
 
     const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
+    let timedOut = false;
+    
     const timer = setTimeout(() => {
       if (settled) {
         return;
       }
 
-      settled = true;
+      timedOut = true;
       child.kill();
-      resolve(buildFailedSmartSearchResult(command, args, new Error(`smart-search timed out after ${timeoutMs}ms`), stderr));
+      // 不立即 resolve，等待 close 事件处理 stdout
     }, timeoutMs);
 
     child.stdout.on("data", (chunk) => {
@@ -281,6 +283,28 @@ async function runSmartSearchCommand(
       settled = true;
       clearTimeout(timer);
 
+      // 如果是超时导致的关闭，尝试解析 stdout 中的错误信息
+      if (timedOut) {
+        if (stdout.trim()) {
+          try {
+            const data = parseSmartSearchJson(stdout);
+            if (data && typeof data === "object" && "error" in data) {
+              const smartSearchError = (data as { error?: string }).error;
+              if (smartSearchError) {
+                resolve(buildFailedSmartSearchResult(command, args, new Error(smartSearchError), stderr));
+                return;
+              }
+            }
+          } catch {
+            // 解析失败，使用默认超时错误
+          }
+        }
+        
+        resolve(buildFailedSmartSearchResult(command, args, new Error(`smart-search timed out after ${timeoutMs}ms`), stderr));
+        return;
+      }
+
+      // 正常退出
       if (code === 0) {
         const data = parseSmartSearchJson(stdout);
         const rawText = normalizeRawText(data, stdout);
@@ -302,6 +326,7 @@ async function runSmartSearchCommand(
         return;
       }
 
+      // 非零退出码
       resolve(buildFailedSmartSearchResult(command, args, new Error(`smart-search exited with code ${code ?? "unknown"}`), stderr));
     });
   });

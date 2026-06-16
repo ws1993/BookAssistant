@@ -21,6 +21,9 @@ deploy/*/
 
 .magi/*
 
+# Performance logs
+perf-logs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

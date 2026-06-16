@@ -2,6 +2,7 @@ import { bookPageSchema, type BookPageInput, type BookSourceInput } from "../../
 import { escapeAttribute, escapeHtml } from "../../utils/escapeHtml.js";
 import { formatHtml } from "../../utils/formatHtml.js";
 import { normalizeRenderableHref } from "../../utils/normalizeRenderableHref.js";
+import { perfMonitor } from "../../utils/performanceMonitor.js";
 import { style } from "../shared/style.js";
 import { renderBookExpression } from "./bookExpressions.js";
 import { getBookExpressionTypes, getResolvedBookExpressions } from "./bookExpressionResolution.js";
@@ -129,37 +130,53 @@ function renderThemeSignature(context: BookRenderContext): string {
   </div>`;
 }
 
-export function renderBookHtml(input: BookPageInput): string {
-  const page = bookPageSchema.parse(input);
-  const context = resolveBookRenderContext(page);
-  const { profile, theme, strategy } = context;
-  const expressions = getResolvedBookExpressions(page, context);
-  const expressionHtml = expressions.map((expression, index) => renderBookExpression(expression, context, index === 0));
-  const sourcesHtml = renderSources(page.sources, context, expressionHtml.length === 0);
+export async function renderBookHtml(input: BookPageInput): Promise<string> {
+  return perfMonitor.measureSync("renderBookHtml", () => {
+    perfMonitor.start("parse-and-resolve");
+    const page = bookPageSchema.parse(input);
+    const context = resolveBookRenderContext(page);
+    const { profile, theme, strategy } = context;
+    const expressions = getResolvedBookExpressions(page, context);
+    perfMonitor.end("parse-and-resolve", { expressionCount: expressions.length });
 
-  const html = `<div data-book-assistant="${escapeAttribute(page.kind)}" data-style-profile="${escapeAttribute(
-    profile
-  )}" data-visual-signature="${escapeAttribute(context.definition.visualSignature)}" data-expression-strategy="${escapeAttribute(strategy)}" data-expression-types="${escapeAttribute(
-    getBookExpressionTypes(expressions)
-  )}" style="${escapeAttribute(
-    style({
-      margin: "16px 0",
-      background: theme.outerBackground,
-      color: theme.text,
-      border: theme.borderCss,
-      "border-radius": theme.radius,
-      "box-shadow": theme.shadow,
-      "font-family": theme.fontFamily,
-      "line-height": 1.65,
-      "max-width": "100%",
-      overflow: "hidden"
-    })
-  )}">
-    ${renderThemeSignature(context)}
-    ${expressionHtml.join("")}
-    ${sourcesHtml}
-    ${renderFooter(page.footer, context)}
-  </div>`;
+    perfMonitor.start("render-expressions", { count: expressions.length });
+    const expressionHtml = expressions.map((expression, index) => renderBookExpression(expression, context, index === 0));
+    perfMonitor.end("render-expressions");
 
-  return formatHtml(html);
+    perfMonitor.start("render-sources", { sourceCount: page.sources.length });
+    const sourcesHtml = renderSources(page.sources, context, expressionHtml.length === 0);
+    perfMonitor.end("render-sources");
+
+    perfMonitor.start("assemble-html");
+    const html = `<div data-book-assistant="${escapeAttribute(page.kind)}" data-style-profile="${escapeAttribute(
+      profile
+    )}" data-visual-signature="${escapeAttribute(context.definition.visualSignature)}" data-expression-strategy="${escapeAttribute(strategy)}" data-expression-types="${escapeAttribute(
+      getBookExpressionTypes(expressions)
+    )}" style="${escapeAttribute(
+      style({
+        margin: "16px 0",
+        background: theme.outerBackground,
+        color: theme.text,
+        border: theme.borderCss,
+        "border-radius": theme.radius,
+        "box-shadow": theme.shadow,
+        "font-family": theme.fontFamily,
+        "line-height": 1.65,
+        "max-width": "100%",
+        overflow: "hidden"
+      })
+    )}">
+      ${renderThemeSignature(context)}
+      ${expressionHtml.join("")}
+      ${sourcesHtml}
+      ${renderFooter(page.footer, context)}
+    </div>`;
+    perfMonitor.end("assemble-html");
+
+    perfMonitor.start("format-html");
+    const formatted = formatHtml(html);
+    perfMonitor.end("format-html");
+
+    return formatted;
+  }, { kind: input.kind });
 }

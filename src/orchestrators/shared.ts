@@ -6,6 +6,7 @@ import {
   type SmartSearchSearchOptions
 } from "../adapters/smartSearchClient.js";
 import { collectEvidenceSources, mergeEvidenceSources } from "../adapters/evidenceNormalizer.js";
+import { perfMonitor } from "../utils/performanceMonitor.js";
 import type { EvidenceSource } from "./types.js";
 
 export function toString(value: unknown, fallback = ""): string {
@@ -85,25 +86,35 @@ export async function collectBookEvidence(
   queries: string[],
   options: SmartSearchSearchOptions = {}
 ): Promise<CollectedEvidence> {
-  const results = await Promise.all(queries.map((query) => runBookSmartSearch(query, options)));
+  return perfMonitor.measure(
+    "collectBookEvidence",
+    async () => {
+      perfMonitor.start("smart-search-queries", { queryCount: queries.length });
+      const results = await Promise.all(queries.map((query) => runBookSmartSearch(query, options)));
+      perfMonitor.end("smart-search-queries");
 
-  const okResults = results.filter((result) => result.ok);
-  const failed = results.filter((result) => !result.ok);
+      const okResults = results.filter((result) => result.ok);
+      const failed = results.filter((result) => !result.ok);
 
-  const digest = okResults
-    .map((result) => result.rawText)
-    .filter((text) => text.trim().length > 0)
-    .join("\n\n---\n\n");
+      perfMonitor.start("merge-evidence");
+      const digest = okResults
+        .map((result) => result.rawText)
+        .filter((text) => text.trim().length > 0)
+        .join("\n\n---\n\n");
 
-  const sources = mergeEvidenceSources(
-    ...results.map((result) => result.sources),
-    ...okResults.map((result) => collectEvidenceSources(result.rawText, "search"))
+      const sources = mergeEvidenceSources(
+        ...results.map((result) => result.sources),
+        ...okResults.map((result) => collectEvidenceSources(result.rawText, "search"))
+      );
+      perfMonitor.end("merge-evidence", { sourceCount: sources.length });
+
+      return {
+        ok: okResults.length > 0,
+        error: okResults.length === 0 ? failed.map((result) => result.error).filter(Boolean).join("; ") || undefined : undefined,
+        digest,
+        sources
+      };
+    },
+    { queryCount: queries.length }
   );
-
-  return {
-    ok: okResults.length > 0,
-    error: okResults.length === 0 ? failed.map((result) => result.error).filter(Boolean).join("; ") || undefined : undefined,
-    digest,
-    sources
-  };
 }

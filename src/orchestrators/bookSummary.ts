@@ -50,7 +50,7 @@ export async function createSummaryPackage(input: SummaryInput): Promise<BookAss
     extraSources: 0,
     fallback: "off",
     format: "json",
-    timeoutSeconds: 25
+    timeoutSeconds: 60  // 改为 60 秒，与其他工具保持一致
   });
 
   const { guidance, pageSkeleton } = buildGuidancePackage("summary", `图书总结：${input.title}`, styleProfile);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseJsonString } from "../adapters/parseJsonString.js";
 import { bookPageSchema, type BookPageOutput } from "../schemas/bookPageSchema.js";
+import { perfMonitor } from "../utils/performanceMonitor.js";
 import { renderBookHtml } from "../renderers/book/renderBookHtml.js";
 
 export interface ComposeDiagnostic {
@@ -153,17 +154,18 @@ function collectMarkdownWarnings(value: unknown, path: Array<string | number> = 
   return warnings;
 }
 
-function createDryRunSummary(page: BookPageOutput): Record<string, unknown> {
-  const html = renderBookHtml(page);
-  const rootDataAttribute = html.match(/data-book-assistant="([^"]+)"/)?.[1];
+function createDryRunSummary(page: BookPageOutput): Promise<Record<string, unknown>> {
+  return renderBookHtml(page).then((html) => {
+    const rootDataAttribute = html.match(/data-book-assistant="([^"]+)"/)?.[1];
 
-  return {
-    renderable: true,
-    htmlLength: html.length,
-    rootDataAttribute,
-    containsHtmlDocumentTag: /<!doctype|<html|<body/i.test(html),
-    containsScript: /<script\b/i.test(html)
-  };
+    return {
+      renderable: true,
+      htmlLength: html.length,
+      rootDataAttribute,
+      containsHtmlDocumentTag: /<!doctype|<html|<body/i.test(html),
+      containsScript: /<script\b/i.test(html)
+    };
+  });
 }
 
 export interface ComposeBookPageResult {
@@ -175,75 +177,83 @@ export interface ComposeBookPageResult {
   nextAction: string;
 }
 
-export function composeBookPage(value: unknown): ComposeBookPageResult {
-  const args = normalizeArguments(value);
-  const errors: ComposeDiagnostic[] = [];
-  const warnings: ComposeDiagnostic[] = [];
-  let page: unknown;
+export async function composeBookPage(value: unknown): Promise<ComposeBookPageResult> {
+  return perfMonitor.measure("composeBookPage", async () => {
+    perfMonitor.start("parse-arguments");
+    const args = normalizeArguments(value);
+    const errors: ComposeDiagnostic[] = [];
+    const warnings: ComposeDiagnostic[] = [];
+    let page: unknown;
 
-  try {
-    page = parseJsonString(args.page, "page");
-  } catch (error) {
-    errors.push(
-      diagnostic(
-        "page",
-        "invalid_json",
-        `page 必须是对象或合法 JSON 字符串。${formatUnknownError(error)}`,
-        "优先以原生对象传入 page；若用 JSON 字符串，请正确转义引号和数组。"
-      )
-    );
-
-    return { readyToRender: false, errors, warnings, nextAction: "revise_page" };
-  }
-
-  warnings.push(...collectMarkdownWarnings(page));
-
-  const parsed = bookPageSchema.safeParse(page);
-  let dryRun: Record<string, unknown> | undefined;
-
-  if (!parsed.success) {
-    errors.push(...zodDiagnostics(parsed.error));
-  } else if (args.dryRun !== false) {
     try {
-      dryRun = createDryRunSummary(parsed.data);
-
-      if (dryRun.containsHtmlDocumentTag) {
-        errors.push(
-          diagnostic(
-            "page",
-            "dry_run_document_tag",
-            "试渲染输出包含文档级标签。",
-            "最终输出应是连续的 HTML 片段，不含 doctype/html/body 标签。"
-          )
-        );
-      }
-
-      if (dryRun.containsScript) {
-        errors.push(
-          diagnostic("page", "dry_run_script_tag", "试渲染输出包含 script 标签。", "渲染前移除类脚本内容。")
-        );
-      }
+      page = parseJsonString(args.page, "page");
     } catch (error) {
-      dryRun = { renderable: false, error: formatUnknownError(error) };
       errors.push(
         diagnostic(
           "page",
-          "dry_run_failed",
-          `page 通过了 schema 校验但试渲染失败：${formatUnknownError(error)}`,
-          "调整 page 对象；若 schema 合法却无法渲染，请反馈为渲染器缺陷。"
+          "invalid_json",
+          `page 必须是对象或合法 JSON 字符串。${formatUnknownError(error)}`,
+          "优先以原生对象传入 page；若用 JSON 字符串，请正确转义引号和数组。"
         )
       );
+
+      return { readyToRender: false, errors, warnings, nextAction: "revise_page" };
     }
-  }
+    perfMonitor.end("parse-arguments");
 
-  const readyToRender = errors.length === 0;
+    perfMonitor.start("markdown-warnings");
+    warnings.push(...collectMarkdownWarnings(page));
+    perfMonitor.end("markdown-warnings");
 
-  return {
-    readyToRender,
-    errors,
-    warnings,
-    dryRun,
-    normalizedArguments: parsed.success ? { page: parsed.data } : undefined,
-    nextAction: readyToRender ? "call_render_book_html_once" : "revise_page"
-  };
+    perfMonitor.start("schema-validation");
+    const parsed = bookPageSchema.safeParse(page);
+    let dryRun: Record<string, unknown> | undefined;
+
+    if (!parsed.success) {
+      errors.push(...zodDiagnostics(parsed.error));
+    } else if (args.dryRun !== false) {
+      try {
+        dryRun = await createDryRunSummary(parsed.data);
+
+        if (dryRun.containsHtmlDocumentTag) {
+          errors.push(
+            diagnostic(
+              "page",
+              "dry_run_document_tag",
+              "试渲染输出包含文档级标签。",
+              "最终输出应是连续的 HTML 片段，不含 doctype/html/body 标签。"
+            )
+          );
+        }
+
+        if (dryRun.containsScript) {
+          errors.push(
+            diagnostic("page", "dry_run_script_tag", "试渲染输出包含 script 标签。", "渲染前移除类脚本内容。")
+          );
+        }
+      } catch (error) {
+        dryRun = { renderable: false, error: formatUnknownError(error) };
+        errors.push(
+          diagnostic(
+            "page",
+            "dry_run_failed",
+            `page 通过了 schema 校验但试渲染失败：${formatUnknownError(error)}`,
+            "调整 page 对象；若 schema 合法却无法渲染，请反馈为渲染器缺陷。"
+          )
+        );
+      }
+    }
+    perfMonitor.end("schema-validation");
+
+    const readyToRender = errors.length === 0;
+
+    return {
+      readyToRender,
+      errors,
+      warnings,
+      dryRun,
+      normalizedArguments: parsed.success ? { page: parsed.data } : undefined,
+      nextAction: readyToRender ? "call_render_book_html_once" : "revise_page"
+    };
+  });
 }

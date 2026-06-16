@@ -26,8 +26,8 @@ test("tool registry exposes 8 tools", () => {
   assert.ok(names.includes("render_book_html"));
 });
 
-test("composeBookPage validates minimal page", () => {
-  const result = composeBookPage({
+test("composeBookPage validates minimal page", async () => {
+  const result = await composeBookPage({
     page: {
       kind: "summary",
       title: "Test Book",
@@ -39,14 +39,14 @@ test("composeBookPage validates minimal page", () => {
   assert.equal(result.errors.length, 0);
 });
 
-test("composeBookPage rejects missing kind", () => {
-  const result = composeBookPage({ page: { title: "Test" } });
+test("composeBookPage rejects missing kind", async () => {
+  const result = await composeBookPage({ page: { title: "Test" } });
   assert.equal(result.readyToRender, false);
   assert.ok(result.errors.length > 0);
 });
 
-test("composeBookPage escapes script tags in rich text", () => {
-  const result = composeBookPage({
+test("composeBookPage escapes script tags in rich text", async () => {
+  const result = await composeBookPage({
     page: {
       kind: "evaluation",
       title: "Test",
@@ -58,7 +58,7 @@ test("composeBookPage escapes script tags in rich text", () => {
   assert.ok(result.dryRun && !result.dryRun.containsScript);
 });
 
-test("renderBookHtml produces inline HTML", () => {
+test("renderBookHtml produces inline HTML", async () => {
   const page = {
     kind: "recommendation" as const,
     title: "Test Books",
@@ -68,7 +68,7 @@ test("renderBookHtml produces inline HTML", () => {
     sources: []
   };
 
-  const html = renderBookHtml(page);
+  const html = await renderBookHtml(page);
   assert.ok(html.includes("data-book-assistant="));
   assert.ok(html.includes("background:"));
   assert.ok(!html.includes("<!doctype"));
@@ -128,14 +128,14 @@ test("resolveBookStyleProfile maps varied book themes to distinct visual profile
   assert.equal(resolveBookStyleProfile("auto", "《百年孤独》文学 经典 拉美小说"), "literary-classic");
 });
 
-test("renderBookHtml includes distinct visual signatures by resolved theme", () => {
-  const fictionHtml = renderBookHtml({
+test("renderBookHtml includes distinct visual signatures by resolved theme", async () => {
+  const fictionHtml = await renderBookHtml({
     kind: "summary",
     title: "三体 科幻 宇宙文明",
     styleProfile: "auto",
     expression: { coreViewpoint: "文明尺度下的命运寓言。" }
   });
-  const academicHtml = renderBookHtml({
+  const academicHtml = await renderBookHtml({
     kind: "summary",
     title: "算法导论 计算机科学 教材",
     styleProfile: "auto",

@@ -2,6 +2,7 @@ import { parseJsonString } from "../adapters/parseJsonString.js";
 import { renderBookHtml } from "../renderers/book/renderBookHtml.js";
 import { renderBookHtmlInputSchema } from "../toolSchemas/renderBookHtmlInputSchema.js";
 import { textContent } from "../server/toolResponse.js";
+import { perfMonitor } from "../utils/performanceMonitor.js";
 import type { BookAssistantTool } from "./types.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -32,8 +33,15 @@ export const renderBookHtmlTool: BookAssistantTool = {
     "Render a validated book page object into a single continuous inline-styled HTML fragment for Cherry Studio. Layer 3 (final) of the book assistant pipeline. Call this only once, after compose_book_page reports readyToRender: true; pass the normalized page it returned. The output uses a book-specific visual theme chosen from styleProfile (literary-classic / web-fiction / knowledge-nonfiction / academic-professional / youth-light, or auto).",
   inputSchema: renderBookHtmlInputSchema,
   async handle(args: unknown) {
-    const page = extractPage(args);
-    const html = renderBookHtml(page as never);
-    return textContent(html);
+    perfMonitor.startSession();
+    try {
+      const html = await perfMonitor.measure("render_book_html_tool", async () => {
+        const page = extractPage(args);
+        return await renderBookHtml(page as never);
+      });
+      return textContent(html);
+    } finally {
+      perfMonitor.endSession();
+    }
   }
 };
